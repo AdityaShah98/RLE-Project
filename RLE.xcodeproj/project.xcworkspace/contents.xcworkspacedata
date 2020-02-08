@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:../RLE/cheryl.jpeg">
+   </FileRef>
+   <FileRef
       location = "self:RLE.xcodeproj">
    </FileRef>
 </Workspace>

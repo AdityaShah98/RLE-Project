@@ -9,9 +9,9 @@
  
  */
 
-void WriteFile(const char* buf, const long size){
+void WriteFile(unsigned const char* buf, const long size, const char* filename){
     // Open File for writing
-    FILE *f_dst = fopen("/Users/AdityaShah/Documents/Xcode/RLE/foo.jpeg", "wb");
+    FILE *f_dst = fopen("/Users/AdityaShah/Documents/Xcode/RLE/cheryl.jpeg.rl2", "wb");
     if(f_dst == NULL)
     {
         printf("ERROR - Failed to open file for writing\n");
@@ -28,6 +28,35 @@ void WriteFile(const char* buf, const long size){
     // Close File
     fclose(f_dst);
     f_dst = NULL;
+}
+
+int Encode(unsigned char* source, const long size, const char* filename){
+    /* Maximum size of encoded file is 2 * original size, considering worst-case
+     scenario of no repetition among characters. +1 for null-termination. */
+    unsigned char *enc = malloc(sizeof (char) * (size*2 + 1));
+    
+    long new_size = 0;
+    int i = 0;
+    int j = 0;
+    while (i < size){
+        unsigned int count = 0x01;
+        while (i < size - 1 && source[i] == source[i + 1]) {
+            count++;
+            i++;
+        }
+        
+        enc[j] = source[i];
+        enc[j+1] = count;
+        j+=2;
+        
+        i++;
+        new_size += 2;
+    }
+    enc[j++] = '\0';
+    
+    
+    WriteFile(enc, new_size, filename);
+    return(1);
 }
 
 float ShannonEntropy(unsigned char* buf, const long size){
@@ -56,7 +85,6 @@ int Compress(FILE *fp, const char* filename){
     fseek(fp, 0L, SEEK_END);
     long size = ftell(fp); //get file size
     if (size == -1){ perror("Failed: "); return 0;} //error
-//    printf("Size of file %ld", size);
     rewind(fp); //seek back to file's beginning
 
     //Allocate approrpiately sized buffer
@@ -77,6 +105,10 @@ int Compress(FILE *fp, const char* filename){
     
     printf("Smallest possible size after lossless compression: %ld Bytes\n", (long)(size * entropy/8.0f));
 
+    Encode(sourcebuf, size, filename);
+    
+    
+    
     return 1;
 }
 

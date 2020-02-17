@@ -153,9 +153,8 @@ int Decode(unsigned char* source, const long size,  char* filename){
      *
      */
     
-    /* Max decoded file size is 2 times the source size (+1 for null termination).
-     Consider the compressed string "1a". Decompressed, it would be "a", 0.5 * original size */
-    unsigned char *dec = malloc(sizeof (char) * (size*2 + 1));
+    /* Max decoded file size is 128 times the source size (+1 for null termination). */
+    unsigned char *dec = malloc(sizeof (char) * (size*128 + 1));
     long new_size = 0;
     
     long i = 0;

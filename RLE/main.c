@@ -3,13 +3,6 @@
 #include <string.h>
 #include <math.h>
 
-/*
- TODO:
- test on linux with command line compiler
- valgrind to check for memory leaks
- write test cases
- */
-
 void WriteFile(unsigned const char* buf, const long size, char* filename, const int mode){
     /*
      * Function:  WriteFile

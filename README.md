@@ -17,3 +17,8 @@ Information entropy and optimal size after compression is calculated using Shann
 ## Usage
 1. `make`
 2. `./RLE MODE FILENAME`: Mode is 1 (for compression) or 2 (for decompression)
+
+## Testing
+* [x] Tested on Mac
+* [x] Tested on Linux
+* [ ] Tested on Windows

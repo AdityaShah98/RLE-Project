@@ -5,7 +5,6 @@
 
 /*
  TODO:
- encoding/decoding bugs
  test on linux with command line compiler
  valgrind to check for memory leaks
  write test cases
@@ -15,7 +14,7 @@ void WriteFile(unsigned const char* buf, const long size, char* filename, const 
     /*
      * Function:  WriteFile
      * --------------------
-     * Writes the given char buffer to a file with a modified filename.
+     *  Writes the given char buffer to a file with a modified filename.
      *
      *  buf: encoded or decoded character array
      *  size: size of the given character array
@@ -26,10 +25,10 @@ void WriteFile(unsigned const char* buf, const long size, char* filename, const 
     
     const char* extention = ".rle\0";
     char * newname = (char *) malloc(1 + strlen(filename) + strlen(extention));
-    if (!mode){ //add .rle file extention
+    if (!mode){ // COMPRESSION MODE: add .rle file extention
         strcat(newname, filename);
         strcat(newname, extention);
-    } else { // remove .rle file extention if exists
+    } else { // DECOMPRESSION MODE: remove .rle file extention if it exists
         char* point = filename;
         if((point = strrchr(filename,'.')) != NULL ) {
             if(strcmp(point,".rle") == 0) { //if .rle extention exists
@@ -60,6 +59,17 @@ void WriteFile(unsigned const char* buf, const long size, char* filename, const 
 }
 
 int Encode(unsigned char* source, const long size,  char* filename){
+    /*
+     * Function:  Encode
+     * --------------------
+     * Encodes the given char buffer into a new buffer using RLE compression and calls WriteFile.
+     *
+     *  source: character buffer of source file
+     *  size: size of the given source buffer
+     *  filename: original name of the inputted file
+     *
+     */
+    
     /* Maximum size of encoded file is 2 * original size, considering worst-case
      scenario of no repetition among characters. +1 for null-termination. */
     unsigned char *enc = malloc(sizeof (char) * (size*2 + 1));
@@ -71,85 +81,88 @@ int Encode(unsigned char* source, const long size,  char* filename){
     while (i < size){
         signed int count = 1;
         if (i < size - 1){ //if not on the last char of file (we can compare to next)
-            if (source[i] == source[i+1]){ //if equal to the next character on the file (POSITIVE RUN)
+            if (source[i] == source[i+1]){ // POSITIVE RUN: if equal to the next character on the file
                 while (i < size - 1 && source[i] == source[i + 1]) {
-                    count++; //count number of repeating charactrs in a row Until last character)
+                    /* Count number of repeating characters in a row until last character */
+                    count++;
                     i++;
                 }
-                // Add count for each > 127
                 while (count > 127){
+                    /* Encode new count for each >127 run (max 1 byte signed int) */
                     enc[j] = 127;
                     enc[j+1] = source[i];
                     count -= 127;
                     j+=2;
                     new_size += 2;
                 }
-                // Add final < 127 count
+                // Add remainding < 127 count
                 enc[j] = count;
                 enc[j+1] = source[i];
                 j+=2;
                 new_size += 2;
-            } else { //if not equal to the next character on the file (NEGATIVE RUN)
-                //2 cases, next char = last char or next char is part of a positive run
-//                if (i < size -2 && source[i+1] != source[i+2]){ //if next char is not part of a positive run
-                    count = -1;
-                    long count_index = j;
+            } else { // NEGATIVE RUN: if not equal to the next character on the file
+                count = -1;
+                long count_index = j; // Store buf location to encode negative count
+                j++;
+                while (i < size && source[i] != source[i+1]) {
+                    count--;
+                    enc[j] = source[i];
                     j++;
-                    while (i < size && source[i] != source[i+1]) {
-                        count--;
-                        enc[j] = source[i];
-                        j++;
-                        i++;
-                        new_size++;
-                        if (count < -128){
-                            /* If only 1 repeated character left in unique run (after reset),
-                             it is added as a solo NEGATIVE run. Not a problem for decoding.*/
-                            i-=1;
-                            enc[count_index] = -128;
-                            count = 0;
-                            count_index = j;
-                        }
-                    }
-                    //backtrack one (when starting a positive run or when last char)
-                    count += 1;
-                    i-=1;
-                    j--;
-                
-                    enc[count_index] = count;
+                    i++;
                     new_size++;
-                    j++;
-//                } else { //if char is between 2 positive runs, keep it a positive run
-//                    enc[j] = count;
-//                    enc[j+1] = source[i];
-//                    j+=2;
-//                    new_size += 2;
-//                }
-                
+                    if (count < -128){
+                        /* Encode new count for each <-128 run (min 1 byte signed int) */
+                        i-=1;
+                        enc[count_index] = -128;
+                        count = 0;
+                        count_index = j;
+                    }
+                }
+                // Backtrack one (when starting a positive run or when last char)
+                count += 1;
+                i-=1;
+                j--;
+            
+                enc[count_index] = count;
+                new_size++;
+                j++;
             }
-        } else { //if on the last character of the file
+        } else { // If on the last character of the file
             enc[j] = count;
             enc[j+1] = source[i];
             j+=2;
             new_size += 2;
         }
-        i++; //move forward
+        i++;
     }
-    enc[j++] = '\0'; //null terminate encoded buffer
+    enc[j++] = '\0'; // Null terminate encoded buffer
     
     
     WriteFile(enc, new_size, filename, 0);
-    //free buffer memory
+    
+    // Free buffer memory
     free(enc);
+    
     printf("Size of file after compression: %ld Bytes\n", new_size);
     
     return(1);
 }
 
 int Decode(unsigned char* source, const long size,  char* filename){
+    /*
+     * Function:  Decode
+     * --------------------
+     * Decodes the given Run-Length Encoded char buffer into a new buffer and calls WriteFile.
+     *
+     *  source: character buffer of source RLE file
+     *  size: size of the given source buffer
+     *  filename: original name of the inputted file
+     *
+     */
+    
     /* Max decoded file size is 2 times the source size (+1 for null termination).
      Consider the compressed string "1a". Decompressed, it would be "a", 0.5 * original size */
     unsigned char *dec = malloc(sizeof (char) * (size*2 + 1));
-//    long tempsize = sizeof (char) * (size*2 + 1);
     long new_size = 0;
     
     long i = 0;
@@ -187,6 +200,18 @@ int Decode(unsigned char* source, const long size,  char* filename){
 }
 
 float ShannonEntropy(unsigned char* buf, const long size){
+    /*
+     * Function:  ShannonEntropy
+     * --------------------
+     * Calculates and returns the Shannon information entropy of the given character buffer
+     *
+     *  buf: character buffer of source file
+     *  size: size of the given source buffer
+     *
+     *  returns: float 0-8 entropy
+     *
+     */
+    
     float entropy = 0;
     float count = 0;
     long c = 0;
@@ -208,10 +233,16 @@ float ShannonEntropy(unsigned char* buf, const long size){
     return entropy;
 }
 
-int Compress(FILE *fp, const char* filename){
+int Compress(FILE *fp, char* filename){
     /*
-     TODO: handle cases of very large (>INT_MAX) runs
-     2's complement range: -128 to 127
+     * Function:  Compress
+     * --------------------
+     * Reads input file into character buffer. Outputs file information and entropy.
+     * Calls encode function.
+     *
+     *  fp: FILE object of the source file
+     *  filename: inputted filename
+     *
      */
     
     fseek(fp, 0L, SEEK_END);
@@ -233,9 +264,9 @@ int Compress(FILE *fp, const char* filename){
     printf("Size of file to compress: %ld Bytes\n", size);
 
     float entropy = ShannonEntropy(sourcebuf, size);
-    printf("Shannon Entropy: %2.5f\n", entropy);
+    printf("Information Entropy: %2.5f\n", entropy);
     
-    printf("Smallest possible size after lossless compression: %ld Bytes\n", (long)(size * entropy/8.0f));
+    printf("Optimal size after lossless compression (original size * (entropy/8)): %ld Bytes\n", (long)(size * entropy/8.0f));
 
     Encode(sourcebuf, size, filename);
     
@@ -245,7 +276,17 @@ int Compress(FILE *fp, const char* filename){
     return 1;
 }
 
-int Decompress(FILE *fp, const char* filename){
+int Decompress(FILE *fp, char* filename){
+    /*
+     * Function:  Decompress
+     * --------------------
+     * Reads input file into character buffer. Outputs file information. Calls
+     * decode function.
+     *
+     *  fp: FILE object of the compressed file
+     *  filename: inputted filename
+     *
+     */
     
     // Get file size
     fseek(fp, 0L, SEEK_END);
@@ -272,21 +313,21 @@ int Decompress(FILE *fp, const char* filename){
     return 1;
 }
 
-void ProcessCommandArgs(int argc, const char* argv[])
+void ProcessCommandArgs(const int argc, char* argv[])
 {
-    if (argc == 3){ //if both mode and filename are supplied
+    if (argc == 3){ // if both mode and filename are supplied
         FILE *file = fopen(argv[2], "rb");
         if (file == NULL){
             perror("Failed: ");
             return;
         }
-        if (atoi(argv[1]) == 1){ //if in compression mode
+        if (atoi(argv[1]) == 1){ // COMPRESSION MODE
             if (Compress(file, argv[2]) == 1){
                 printf("File compression suceeded\n");
             } else {
                 printf("File compression failed\n");
             }
-        } else if (atoi(argv[1]) == 2){ //if in decompression mode
+        } else if (atoi(argv[1]) == 2){ // DECOMPRESSION MODE
             if (Decompress(file, argv[2]) == 1){
                 printf("File decompression suceeded\n");
             } else {
@@ -296,10 +337,12 @@ void ProcessCommandArgs(int argc, const char* argv[])
             printf("Enter either 1 or 2 for first argument. 1) Compression 2) Decompression.");
         }
         fclose(file);
+    } else {
+        printf("Usage: ./RLE *1 for compression, 2 for decompression* *filename*\n");
     }
 }
 
-int main(int argc, const char* argv[])
+int main(int argc, char* argv[])
 {
     ProcessCommandArgs(argc, argv);
     return 0;

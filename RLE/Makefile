@@ -1,5 +1,11 @@
 CC=gcc
-CFLAGS=-I.
+CFLAGS=-O
+LIBS = -lm
 
-RLE: main.o
-	$(CC) -o RLE main.o
+all: RLE
+
+RLE: main.c
+	$(CC) main.c $(CFLAGS) $(LIBS) -o RLE 
+
+clean:
+	rm -f *.o RLE *~

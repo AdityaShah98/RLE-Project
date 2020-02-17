@@ -1,3 +1,5 @@
+<img src="https://image.flaticon.com/icons/svg/1387/1387554.svg" title = "RLE Logo" width="160" align="right">
+
 # Command Line RLE Compressor/Decompressor
 >Run length encoder/decoder written in C.
 

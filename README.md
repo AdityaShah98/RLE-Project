@@ -22,3 +22,7 @@ Information entropy and optimal size after compression is calculated using Shann
 * [x] Tested on Mac
 * [x] Tested on Linux
 * [ ] Tested on Windows
+
+## Potential Improvements
+* [ ] Dynamic realloc for decoding (instead of precomputing worst case)
+* [ ] #define and use constants
